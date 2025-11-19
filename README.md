@@ -4,6 +4,8 @@
 
 A comprehensive Quarto website providing parallel tutorials for common data manipulation tasks using SQL, R, and Python. This resource helps you understand equivalent operations across these three popular data analysis tools.
 
+[https://jcwinning.github.io/Into_sql/](https://jcwinning.github.io/Into_sql/)
+
 ## Features
 
 - **Language Comparison**: Side-by-side examples showing how to achieve the same data manipulation tasks
