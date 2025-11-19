@@ -1,0 +1,146 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "---\n",
+        "title: \"chatlas LLM pacakge for Python\"\n",
+        "\n",
+        "execute:\n",
+        "  warning: false\n",
+        "  error: false\n",
+        "\n",
+        "  \n",
+        "format:\n",
+        "  html:\n",
+        "    toc: true\n",
+        "    toc-location: right\n",
+        "    code-fold: show\n",
+        "    code-tools: true\n",
+        "    number-sections: true\n",
+        "    code-block-bg: true\n",
+        "    code-block-border-left: \"#31BAE9\"\n",
+        "---\n",
+        "\n",
+        "chatlas provides a simple and unified interface across large language model (llm) providers in Python. \n",
+        "\n",
+        "![](https://posit-dev.github.io/chatlas/images/logo.png){width=\"260\"}\n",
+        "\n",
+        "\n",
+        "```{bash}\n",
+        "#| eval: false\n",
+        "pip3 install -U chatlas\n",
+        "pip3 install -q -U google-genai\n",
+        "pip3 install shiny\n",
+        "pip3 install keyring\n",
+        "```"
+      ],
+      "id": "56885a8f"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "from chatlas import ChatGoogle,token_usage\n",
+        "import keyring"
+      ],
+      "id": "9efb6193",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# Google gemini"
+      ],
+      "id": "09c7df20"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "from chatlas import ChatGoogle\n",
+        "\n",
+        "chat_google_model = ChatGoogle(\n",
+        "  model = \"gemini-2.0-flash\",\n",
+        "  api_key=keyring.get_password(\"system\", \"google_ai_api_key\"),\n",
+        "  system_prompt = \"You are a IT expert\",\n",
+        ")\n",
+        "\n",
+        "chat_google_model"
+      ],
+      "id": "9b0d999f",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "result=chat_google_model.chat(\"What preceding languages most influenced Python?\")\n",
+        "result"
+      ],
+      "id": "13fc9296",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# Interactive mode"
+      ],
+      "id": "d35ae1f7"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#chat_google_model.app()"
+      ],
+      "id": "7b2fe6c3",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# console mode"
+      ],
+      "id": "bf069658"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#chat_google_model.console()"
+      ],
+      "id": "5f77b18a",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# reference\n",
+        "\n",
+        "https://ellmer.tidyverse.org/"
+      ],
+      "id": "56ad68dc"
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "name": "python3",
+      "language": "python",
+      "display_name": "Python 3 (ipykernel)",
+      "path": "/Library/Frameworks/Python.framework/Versions/3.13/share/jupyter/kernels/python3"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}

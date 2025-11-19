@@ -1,0 +1,15 @@
+{
+  "hash": "c4d6201a1bf8a0f287422a8b998193cf",
+  "result": {
+    "engine": "knitr",
+    "markdown": "---\ntitle: \"About\"\n---\n\nAbout this site\n\n::: {.cell}\n\n```{.r .cell-code}\n1 + 1\n```\n\n::: {.cell-output .cell-output-stdout}\n\n```\n[1] 2\n```\n\n\n:::\n:::\n\n\n\n<script src=\"https://giscus.app/client.js\"\n        data-repo=\"[ENTER REPO HERE]\"\n        data-repo-id=\"[ENTER REPO ID HERE]\"\n        data-category=\"[ENTER CATEGORY NAME HERE]\"\n        data-category-id=\"[ENTER CATEGORY ID HERE]\"\n        data-mapping=\"pathname\"\n        data-strict=\"0\"\n        data-reactions-enabled=\"1\"\n        data-emit-metadata=\"0\"\n        data-input-position=\"bottom\"\n        data-theme=\"preferred_color_scheme\"\n        data-lang=\"en\"\n        crossorigin=\"anonymous\"\n        async>\n</script>",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}

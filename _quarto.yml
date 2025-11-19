@@ -1,0 +1,59 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  comments:
+    giscus:
+      repo: JCfly3000/into_sql
+      input-position: "bottom"
+      theme:
+        light: light # giscus theme used for light website theme
+        dark: dark_dimmed # giscus theme used for dark website theme
+
+  title: "SQL handbook"
+  favicon: "SQL-Database.png"
+  navbar:
+    logo: "SQL-Database.png"
+    left:
+      - href: index.qmd
+        text: Home
+
+  
+      
+
+
+  page-footer:
+    right: "This blog is built with ❤️ and [Quarto](https://quarto.org/)."
+    
+format:
+  html:
+ 
+    theme:   
+      light: cosmo
+      dark: darkly
+    css: styles.css
+    grid:
+      body-width: 900px
+      margin-width: 300px
+      gutter-width: 1.5rem
+
+
+resources:
+  - "output_data/*"
+
+filters:
+  - foldableCodeBlcok.lua
+
+babelquarto:
+  languagecodes:
+  - name: cn
+    text: "中文"
+  - name: en
+    text: "EN"
+  mainlanguage: 'en'
+  languages: ['cn']
+title-cn: SQL入门
+description-cn: 
+author-cn: Tony D
+lang: en

@@ -1,0 +1,1155 @@
+---
+title: "SQL handbook"
+author: "Tony Duan"
+execute:
+  warning: false
+  error: false
+format:
+  html:
+    toc: true
+    toc-location: right
+    code-fold: show
+    code-tools: true
+    number-sections: true
+    code-block-bg: true
+    code-block-border-left: "#31BAE9"
+---
+
+
+This document provides a comprehensive guide to performing common data manipulation tasks using SQL, R, and Python. It serves as a reference for understanding how to achieve similar outcomes across these three popular data analysis tools.
+
+## Introduction to Data Analytics Tools
+
+In data analysis, we work with different tools, each with its strengths:
+
+- **SQL**: Excellent for structured query and database operations
+- **R**: Powerful statistical computing and data visualization
+- **Python**: Versatile programming with great data science libraries
+
+This tutorial shows how to accomplish the same data manipulation tasks across all three tools, helping you choose the right approach for your needs.
+
+
+# Setup and Configuration
+
+```{r}
+#| code-fold: true
+#| output: false
+library(reticulate)
+py_require(c("pandas","Great-Tables","polars","pyarrow"))
+
+# Load libraries for database interaction, data manipulation, and connections.
+library(DBI)
+library(tidyverse)
+library(RSQLite)
+library(connections)
+library(duckdb)
+
+# Prepare the R dataframes.
+# Remove the existing mtcars dataset if it exists.
+rm(mtcars)
+# Create the mtcars dataframe from the base R dataset, adding the row names as a new column.
+mtcars = cbind(model_name = rownames(mtcars), mtcars) |> head(10)
+# Create the iris dataframe from the base R dataset.
+iris = iris |> head(10)
+
+# Remove the database file if it already exists to start with a clean slate.
+if (file.exists("my-db.duckdb")) {
+  file.remove("my-db.duckdb")
+}
+# Establish a connection to the DuckDB database.
+con <- dbConnect(duckdb(), dbdir = "my-db.duckdb", read_only = FALSE)
+# Write the iris and mtcars dataframes to the database as tables.
+dbWriteTable(con, "iris_table", iris, overwrite = TRUE)
+dbWriteTable(con, "mtcars_table", mtcars, overwrite = TRUE)
+
+```
+
+
+```{python}
+#| code-fold: true
+#| output: false
+import pandas as pd
+import polars as pl
+import os
+
+from platform import python_version
+#print(python_version())
+
+cities_pd = pd.DataFrame({
+    'country': ['NL', 'NL', 'NL', 'US', 'US', 'US', 'US', 'US', 'US'],
+    'name': ['Amsterdam', 'Amsterdam', 'Amsterdam', 'Seattle', 'Seattle', 'Seattle', 'New York City', 'New York City', 'New York City'],
+    'year': [2000, 2010, 2020, 2000, 2010, 2020, 2000, 2010, 2020],
+    'population': [1005, 1065, 1158, 564, 608, 738, 8015, 8175, 8772]
+})
+
+# Make the R dataframes available in the Python environment.
+mtcars_pd = r.mtcars
+iris_pd = r.iris
+mtcars_pl = pl.from_pandas(mtcars_pd)
+iris_pl = pl.from_pandas(iris_pd)
+cities_pl=pl.from_pandas(cities_pd)
+```
+
+
+- There are tables `iris_table` and `mtcars_table` in the DuckDB database `my-db.duckdb`.
+- There are dataframes `iris` and `mtcars` in the R environment.
+- There are dataframes `iris` and `mtcars` in the Python environment.
+
+# Getting Started with Data Exploration
+
+## Show All Tables
+
+This section demonstrates how to list all available tables or dataframes in each environment.
+
+::: panel-tabset
+
+## SQL
+
+```{sql}
+#| connection: con
+-- Show all tables in the connected database.
+SHOW ALL TABLES;
+```
+
+## R
+
+```{r}
+# List all dataframes in the current R environment.
+dflist <- Filter(is.data.frame, as.list(.GlobalEnv))
+names(dflist)
+```
+
+## Python pandas
+
+```{python}
+# List all pandas dataframes in the current Python environment.
+import pandas as pd
+alldfs = [var for var in dir() if isinstance(eval(var), pd.core.frame.DataFrame)]
+print(alldfs)
+```
+
+## Python Polars
+
+```{python}
+import polars as pl
+
+alldfs = [name for name, val in globals().items() if isinstance(val, pl.DataFrame)]
+print(alldfs)
+```
+
+
+:::
+
+# Describe a Table
+
+This section shows how to get a summary of a table's structure and statistics.
+
+::: panel-tabset
+
+## SQL
+
+```{sql}
+#| connection: con
+-- Describe the columns and data types of the mtcars_table.
+DESCRIBE mtcars_table;
+```
+
+## R
+
+```{r}
+# Provide a detailed summary of the mtcars dataframe.
+skimr::skim(mtcars)
+```
+
+## Python pandas
+
+```{python}
+# Generate descriptive statistics for the mtcars dataframe.
+mtcars_pd.describe(include='all')
+```
+
+
+
+## Python Polars
+
+```{python}
+mtcars_pl.describe()
+```
+
+
+
+
+:::
+
+# Show Column Names
+
+This section demonstrates how to retrieve the column names of a table.
+
+::: panel-tabset
+
+## SQL
+
+```{sql}
+#| connection: con
+-- Show information about the columns in mtcars_table.
+PRAGMA table_info(mtcars_table);
+```
+
+## R
+
+```{r}
+# Get the names of the columns in the mtcars dataframe.
+names(mtcars)
+```
+
+## Python pandas
+
+```{python}
+# Get a list of column names from the mtcars dataframe.
+import pandas as pd
+list(mtcars_pd.columns.values)
+```
+
+
+## Python Polars
+
+```{python}
+# Get a list of column names from the mtcars dataframe.
+mtcars_pl.columns
+```
+
+
+
+:::
+
+# Select
+
+## Select Top 6 and Rename
+
+This section shows how to select a subset of columns, rename them, and limit the number of rows returned.
+
+::: panel-tabset
+
+## SQL
+
+```{sql}
+#| connection: con
+-- Select and rename columns, limiting the result to the top 6 rows.
+SELECT model_name as model, mpg, cyl FROM mtcars_table LIMIT 6;
+```
+
+## R
+
+```{r}
+# Select and rename columns from the first 6 rows of the mtcars dataframe.
+head(mtcars, 6) |> select(model = model_name, mpg, cyl)
+```
+
+## Python pandas
+
+```{python}
+# Rename a column in the mtcars dataframe.
+mtcars_pd.rename(columns={'model_name': 'model'})
+```
+
+## Python Polars
+
+```{python}
+mtcars_pl.select(pl.col("model_name").alias("model"), pl.col("mpg"), pl.col("cyl")).head(6)
+```
+
+:::
+
+## Select Distinct
+
+This section demonstrates how to retrieve unique rows based on specified columns.
+
+::: panel-tabset
+
+## SQL
+
+```{sql}
+#| connection: con
+-- Select distinct combinations of mpg and cyl.
+SELECT DISTINCT mpg, cyl FROM mtcars_table;
+```
+
+## R
+
+```{r}
+# Get distinct rows based on mpg and cyl.
+mtcars |> distinct(mpg, cyl)
+```
+
+## Python pandas
+
+```{python}
+# Select specific columns and drop duplicate rows.
+df = mtcars_pd[["mpg", "cyl"]]
+print(df.drop_duplicates())
+```
+
+## Python Polars
+
+```{python}
+mtcars_pl.select(pl.col("mpg"), pl.col("cyl")).unique()
+```
+
+:::
+
+# Check Row and Column Number
+
+This section shows how to find the dimensions of a table.
+
+::: panel-tabset
+
+## SQL
+
+```{sql}
+#| connection: con
+-- Get the total number of rows.
+SELECT count(*) AS row_number FROM mtcars_table;
+```
+
+```{sql}
+#| connection: con
+-- Get the total number of columns.
+SELECT count(*) AS column_number FROM (DESCRIBE mtcars_table);
+```
+
+## R
+
+```{r}
+# Get the number of rows.
+nrow(mtcars)
+```
+
+```{r}
+# Get the number of columns.
+ncol(mtcars)
+```
+
+## Python pandas
+
+```{python}
+# Get the number of rows.
+mtcars_pd.shape[0]
+```
+
+```{python}
+# Get the number of columns.
+mtcars_pd.shape[1]
+```
+
+
+
+## Python Polars
+
+```{python}
+# Get the number of rows.
+mtcars_pl.shape[0]
+```
+
+```{python}
+# Get the number of columns.
+mtcars_pl.shape[1]
+```
+
+
+
+:::
+
+# Create Column
+
+This section demonstrates how to add a new column to a table based on existing data.
+
+::: panel-tabset
+
+## SQL
+
+```{sql}
+#| connection: con
+-- Create a new column by performing a calculation on an existing column.
+SELECT *, mpg + 1 AS new_mpg FROM mtcars_table;
+```
+
+## R
+
+```{r}
+# Add a new column to the dataframe.
+mtcars |> mutate(new_mpg = mpg + 1)
+```
+
+## Python pandas
+
+```{python}
+# Create a new column in the dataframe.
+mtcars_pd["new_mpg"] = mtcars_pd["mpg"] + 1
+mtcars_pd
+```
+
+## Python Polars
+
+```{python}
+mtcars_pl.with_columns((pl.col("mpg") + 1).alias("new_mpg"))
+```
+
+:::
+
+# Filter
+
+This section shows how to select rows that meet specific criteria.
+
+::: panel-tabset
+
+## SQL
+
+```{sql}
+#| connection: con
+-- Use the AND operator to filter rows based on multiple conditions.
+SELECT * FROM mtcars_table WHERE mpg = 21 AND cyl = 6;
+```
+
+```{sql}
+#| connection: con
+-- Use the OR operator to filter rows.
+SELECT * FROM mtcars_table WHERE mpg = 21 OR cyl = 6;
+```
+
+## R
+
+```{r}
+# Use the & operator for "and" filtering.
+mtcars |> filter(mpg == 21 & cyl == 6)
+```
+
+```{r}
+# Use the | operator for "or" filtering.
+mtcars |> filter(mpg == 21 | cyl == 6)
+```
+
+## Python pandas
+
+```{python}
+# Use the query method for "and" filtering.
+mtcars_pd.query('mpg == 21 and cyl == 6')
+```
+
+```{python}
+# Use the query method for "or" filtering.
+mtcars_pd.query('mpg == 21 or cyl == 6')
+```
+
+## Python Polars
+
+```{python}
+# "and" filtering with polars
+mtcars_pl.filter((pl.col("mpg") == 21) & (pl.col("cyl") == 6))
+```
+
+```{python}
+# "or" filtering with polars
+mtcars_pl.filter((pl.col("mpg") == 21) | (pl.col("cyl") == 6))
+```
+
+:::
+
+# Order
+
+This section demonstrates how to sort a table based on one or more columns.
+
+::: panel-tabset
+
+## SQL
+
+```{sql}
+#| connection: con
+-- Order the results by mpg in descending order and show the top 3.
+SELECT model_name AS model, mpg, cyl FROM mtcars_table ORDER BY mpg DESC LIMIT 3;
+```
+
+## R
+
+```{r}
+# Arrange the dataframe by mpg in descending order.
+mtcars |> select(model = model_name, mpg, cyl) |> arrange(desc(mpg)) |> head(3)
+```
+
+## Python pandas
+
+```{python}
+# Sort the dataframe by mpg in descending order.
+mtcars_pd[["model_name", "mpg", "cyl"]].sort_values(by='mpg', ascending=False).head(3)
+```
+
+## Python Polars
+
+```{python}
+mtcars_pl.select("model_name", "mpg", "cyl").sort("mpg", descending=True).head(3)
+```
+
+:::
+
+# Group By
+
+This section shows how to group rows and perform aggregate calculations.
+
+::: panel-tabset
+
+## SQL
+
+```{sql}
+#| connection: con
+-- Group by model_name and calculate the sum of mpg and the mean of cyl.
+SELECT model_name, sum(mpg) AS total_mpg, mean(cyl) AS cyl_mean FROM mtcars_table
+GROUP BY 1 LIMIT 5;
+```
+
+## R
+
+```{r}
+# Group by model_name and summarize the data.
+mtcars |> group_by(model_name) |> summarise(total_mpg = sum(mpg), cyl_mean = mean(cyl)) |> head(5)
+```
+
+## Python pandas
+
+```{python}
+# Group by model_name and aggregate the data.
+mtcars_pd.groupby('model_name').agg({'mpg': 'sum', 'cyl': 'mean'}).head(5)
+```
+
+## Python Polars
+
+```{python}
+mtcars_pl.group_by("model_name").agg([
+    pl.sum("mpg").alias("total_mpg"),
+    pl.mean("cyl").alias("cyl_mean")
+]).head(5)
+```
+
+:::
+
+# Create Table
+
+## CREATE OR REPLACE
+
+This command creates a new table or overwrites an existing one.
+
+```{sql}
+#| connection: con
+-- Create a temporary table, replacing it if it already exists.
+CREATE OR REPLACE TEMP TABLE mtcars_table_group AS
+SELECT model_name, sum(mpg) AS total_mpg, mean(cyl) AS cyl_mean FROM mtcars_table
+GROUP BY 1;
+```
+
+## CREATE TABLE IF NOT EXISTS
+
+This command creates a table only if it does not already exist.
+
+```{sql}
+#| connection: con
+-- Create a new table only if it does not already exist.
+CREATE TABLE IF NOT EXISTS new_mtcars_table_group AS
+SELECT model_name, sum(mpg) AS total_mpg, mean(cyl) AS cyl_mean FROM mtcars_table
+GROUP BY 1;
+```
+
+# Unique
+
+## Check Unique
+
+This section demonstrates how to verify the uniqueness of values in a column.
+
+::: panel-tabset
+
+### SQL
+
+```{sql}
+#| connection: con
+-- Count the total number of rows and the number of distinct model names.
+SELECT count(*), count(DISTINCT model_name) FROM mtcars_table;
+```
+
+### Python pandas
+
+```{python}
+# Count the total number of rows and the number of distinct model names.
+print(len(mtcars_pd), mtcars_pd.model_name.nunique())
+```
+
+### Python Polars
+
+```{python}
+# Count the total number of rows and the number of distinct model names.
+mtcars_pl.select(pl.count(), pl.col("model_name").n_unique())
+```
+
+:::
+
+## Get Duplicate and Non-Duplicate Data
+
+This section demonstrates how to get duplicate and non-duplicate data based on a single column.
+
+::: panel-tabset
+
+### SQL
+
+#### Show all Duplicate
+
+```{sql}
+#| connection: con
+-- Get duplicate rows based on the mpg column.
+SELECT * FROM mtcars_table WHERE mpg IN (SELECT mpg FROM mtcars_table GROUP BY mpg HAVING count(*) > 1);
+```
+
+#### Keep non-Duplicate
+
+```{sql}
+#| connection: con
+-- Get non-duplicate rows based on the mpg column.
+SELECT * FROM mtcars_table WHERE mpg IN (SELECT mpg FROM mtcars_table GROUP BY mpg HAVING count(*) = 1);
+```
+
+### R
+
+#### Show all Duplicate
+
+
+```{r}
+# Get duplicate rows based on the mpg column.
+mtcars |> filter(duplicated(mpg) | duplicated(mpg, fromLast = TRUE))
+```
+
+#### keep non Duplicate
+
+
+```{r}
+# Get non-duplicate rows based on the mpg column.
+mtcars |> filter(!duplicated(mpg) & !duplicated(mpg, fromLast = TRUE))
+```
+
+### Python pandas
+
+#### Show all Duplicate
+
+
+```{python}
+# Get duplicate rows based on the mpg column.
+mtcars_pd[mtcars_pd.duplicated(subset=['mpg'], keep=False)]
+```
+#### keep non Duplicate
+
+```{python}
+# Get non-duplicate rows based on the mpg column.
+mtcars_pd[~mtcars_pd.duplicated(subset=['mpg'], keep=False)]
+```
+
+### Python Polars
+
+```{python}
+# Get duplicate rows based on the mpg column.
+mtcars_pl.filter(pl.col("mpg").is_duplicated())
+```
+
+#### keep non Duplicate
+
+```{python}
+# Get non-duplicate rows based on the mpg column.
+mtcars_pl.filter(pl.col("mpg").is_unique())
+```
+
+:::
+
+
+# Join
+
+```{sql}
+#| connection: con
+-- Select all data from the newly created temporary table.
+SELECT * FROM mtcars_table_group t1;
+```
+
+## Left Join
+
+This section shows how to perform a left join to combine data from two tables.
+
+::: panel-tabset
+
+## SQL
+
+```{sql}
+#| connection: con
+-- Perform a left join between mtcars_table and mtcars_table_group.
+SELECT t1.model_name, t1.mpg, t1.cyl, t2.* FROM mtcars_table t1
+LEFT JOIN mtcars_table_group t2 ON t1.model_name = t2.model_name
+LIMIT 5;
+```
+
+## R
+
+```{r}
+# Perform a left join on the mtcars dataframe with itself.
+mtcars |> left_join(mtcars, by = join_by(model_name == model_name)) |> head(5)
+```
+
+## Python pandas
+
+```{python}
+# Perform a left join using pandas.
+pd.merge(mtcars_pd, mtcars_pd, left_on='model_name', right_on='model_name', how='left').head(5)
+```
+
+## Python Polars
+
+```{python}
+mtcars_pl.join(mtcars_pl, on="model_name", how="left").head(5)
+```
+
+:::
+
+## Inner Join
+
+This section demonstrates how to perform an inner join.
+
+::: panel-tabset
+
+## SQL
+
+```{sql}
+#| connection: con
+-- Perform an inner join with a subquery.
+SELECT t1.model_name, t1.mpg, t1.cyl, t2.* FROM mtcars_table t1
+INNER JOIN (SELECT * FROM mtcars_table_group LIMIT 5) t2 ON t1.model_name = t2.model_name;
+```
+
+## R
+
+```{r}
+# Perform an inner join.
+mtcars |> inner_join(mtcars, by = join_by(model_name == model_name)) |> head(5)
+```
+
+## Python pandas
+
+```{python}
+# Perform an inner join with pandas.
+pd.merge(mtcars_pd, mtcars_pd, left_on='model_name', right_on='model_name', how='inner').head(5)
+```
+
+## Python Polars
+
+```{python}
+mtcars_pl.join(mtcars_pl, on="model_name", how="inner").head(5)
+```
+
+:::
+
+# Append Rows
+
+## Append Without Duplicate Elimination (`union all`)
+
+This section shows how to combine rows from two tables, keeping all duplicates.
+
+::: panel-tabset
+
+### SQL
+
+```{sql}
+#| connection: con
+-- Count the rows in the original table.
+SELECT count(*) FROM mtcars_table;
+```
+
+```{sql}
+#| connection: con
+-- Create a new table by appending mtcars_table to itself, including duplicates.
+CREATE TEMP TABLE double_mtcars_table AS
+SELECT * FROM mtcars_table
+UNION ALL
+SELECT * FROM mtcars_table;
+```
+
+```{sql}
+#| connection: con
+-- Count the rows in the new table.
+SELECT count(*) FROM double_mtcars_table;
+```
+
+### R
+
+```{r}
+# Append rows using bind_rows.
+mtcars %>% bind_rows(mtcars)
+```
+
+### Python pandas
+
+```{python}
+# Concatenate dataframes, keeping all rows.
+pd.concat([mtcars_pd, mtcars_pd], ignore_index=True)
+```
+
+:::
+
+## Append With Duplicate Elimination (`union`)
+
+This section demonstrates how to combine rows while removing duplicate entries.
+
+::: panel-tabset
+
+### SQL
+
+```{sql}
+#| connection: con
+-- Create a table, removing duplicate rows.
+CREATE OR REPLACE TEMP TABLE union_mtcars_table AS
+SELECT * FROM mtcars_table
+UNION
+SELECT * FROM mtcars_table;
+```
+
+```{sql}
+#| connection: con
+-- Count the rows in the new table (should be same as original since all rows are identical).
+SELECT count(*) AS union_row_count FROM union_mtcars_table;
+```
+
+### R
+
+```{r}
+# Append rows and then remove duplicates.
+mtcars %>% bind_rows(mtcars) |> distinct()
+```
+
+### Python pandas
+
+```{python}
+# Concatenate dataframes and then drop duplicates.
+pd.concat([mtcars_pd, mtcars_pd], ignore_index=True).drop_duplicates().reset_index(drop=True)
+```
+
+:::
+
+# Delete Rows
+
+This section shows how to remove rows from a table based on a condition.
+
+::: panel-tabset
+
+## SQL
+
+```{sql}
+#| connection: con
+-- Delete a specific row from the table.
+DELETE FROM mtcars_table WHERE model_name = 'Mazda RX4';
+```
+
+```{sql}
+#| connection: con
+-- Verify the row count after deletion.
+SELECT count(*) FROM mtcars_table;
+```
+
+## R
+
+```{r}
+# Filter out the specified row.
+mtcars |> filter(model_name != 'Mazda RX4')
+```
+
+## Python pandas
+
+```{python}
+# Select all rows except the one specified.
+mtcars_pd[mtcars_pd['model_name'] != 'Mazda RX4']
+```
+
+## Python Polars
+
+```{python}
+mtcars_pl.filter(pl.col("model_name") != 'Mazda RX4')
+```
+
+:::
+
+# Update Rows
+
+This section demonstrates how to modify existing data in a table.
+
+::: panel-tabset
+
+## SQL
+
+```{sql}
+#| connection: con
+-- Select the row to be updated.
+SELECT model_name, mpg FROM mtcars_table WHERE model_name = 'Mazda RX4 Wag';
+```
+
+```{sql}
+#| connection: con
+-- Update the value of a column for a specific row.
+UPDATE mtcars_table
+SET mpg = 999
+WHERE model_name = 'Mazda RX4 Wag';
+```
+
+```{sql}
+#| connection: con
+-- Verify the update.
+SELECT model_name, mpg FROM mtcars_table WHERE model_name = 'Mazda RX4 Wag';
+```
+
+## R
+
+```{r}
+# Update a value within a filtered selection.
+mtcars |> filter(model_name == 'Mazda RX4 Wag') |> mutate(mpg = 999)
+```
+
+## Python pandas
+
+```{python}
+# Update a specific value using .loc.
+mtcars_pd.loc[mtcars_pd['model_name'] == 'Mazda RX4 Wag', 'mpg'] = 999
+mtcars_pd
+```
+
+## Python Polars
+
+```{python}
+mtcars_pl.with_columns(
+    pl.when(pl.col("model_name") == 'Mazda RX4 Wag')
+    .then(999)
+    .otherwise(pl.col("mpg"))
+    .alias("mpg")
+)
+```
+
+:::
+
+# Drop Table
+
+This section shows how to remove a table from the database.
+
+Before dropping the table:
+
+```{sql}
+#| connection: con
+-- Show all tables before dropping one.
+SHOW ALL TABLES;
+```
+
+Dropping the table:
+
+```{sql}
+#| connection: con
+-- Drop the specified table if it exists.
+DROP TABLE IF EXISTS mtcars_table_group;
+```
+
+After dropping the table:
+
+```{sql}
+#| connection: con
+-- Show all tables again to confirm the deletion.
+SHOW ALL TABLES;
+```
+
+# PIVOT
+
+This section demonstrates how to transform data from a long to a wide format.
+
+```{sql}
+#| connection: con
+-- Create a temporary table for the pivot demonstration.
+DROP TABLE IF EXISTS cities;
+CREATE TEMP TABLE cities (
+    country VARCHAR, name VARCHAR, year INTEGER, population INTEGER
+);
+INSERT INTO cities VALUES
+    ('NL', 'Amsterdam', 2000, 1005),
+    ('NL', 'Amsterdam', 2010, 1065),
+    ('NL', 'Amsterdam', 2020, 1158),
+    ('US', 'Seattle', 2000, 564),
+    ('US', 'Seattle', 2010, 608),
+    ('US', 'Seattle', 2020, 738),
+    ('US', 'New York City', 2000, 8015),
+    ('US', 'New York City', 2010, 8175),
+    ('US', 'New York City', 2020, 8772);
+```
+
+```{sql}
+#| connection: con
+-- View the raw data.
+SELECT * FROM cities;
+```
+
+## PIVOT on One Column
+
+::: panel-tabset
+
+### SQL
+
+```{sql}
+#| connection: con
+-- Pivot the table on the 'year' column.
+PIVOT cities
+ON year
+USING sum(population)
+GROUP BY country;
+```
+
+### Python pandas
+
+```{python}
+cities_pd.pivot_table(index='country', columns='year', values='population', aggfunc='sum').reset_index()
+```
+
+### Python Polars
+
+```{python}
+cities_pl.pivot(index='country', columns='year', values='population', aggregate_function='sum')
+```
+
+:::
+
+## PIVOT on Two Columns
+
+::: panel-tabset
+
+### SQL
+
+```{sql}
+#| connection: con
+-- Pivot on both 'country' and 'name'.
+PIVOT cities
+ON country, name
+USING sum(population);
+```
+
+### Python pandas
+
+```{python}
+cities_pd.pivot_table(index=['country', 'name'], columns='year', values='population', aggfunc='sum').reset_index()
+```
+
+### Python Polars
+
+```{python}
+cities_pl.pivot(index=['country', 'name'], columns='year', values='population', aggregate_function='sum')
+```
+
+:::
+
+# UNPIVOT
+
+This section shows how to transform data from a wide to a long format.
+
+::: panel-tabset
+
+### SQL
+
+```{sql}
+#| connection: con
+-- Unpivot the previously pivoted table.
+UNPIVOT
+(
+  PIVOT cities
+  ON year
+  USING sum(population)
+  GROUP BY country
+)
+ON COLUMNS(* EXCLUDE (country))
+INTO
+    NAME year
+    VALUE population;
+```
+
+### Python pandas
+
+
+
+
+```{python}
+cities_pivot_pd = cities_pd.pivot_table(index='country', columns='year', values='population', aggfunc='sum').reset_index()
+cities_pivot_pd.melt(id_vars='country', value_vars=[2000, 2010, 2020], var_name='year', value_name='population')
+```
+
+### Python Polars
+
+```{python}
+cities_pivot_pl = cities_pl.pivot(index='country', columns='year', values='population', aggregate_function='sum')
+cities_pivot_pl.unpivot(index='country', on=['2000', '2010', '2020'], variable_name='year', value_name='population')
+```
+
+:::
+
+# EXPLAIN
+
+This section demonstrates how to analyze the execution plan of a query.
+
+```{sql}
+#| eval: false
+#| connection: con
+-- Show the logical execution plan of a query.
+EXPLAIN
+SELECT t1.model_name, t1.mpg, t1.cyl, t2.* FROM mtcars_table t1
+INNER JOIN (SELECT * FROM mtcars_table LIMIT 5) t2 ON t1.model_name = t2.model_name;
+```
+
+```{sql}
+#| eval: false
+#| connection: con
+-- Show the detailed execution plan, including timing information.
+EXPLAIN ANALYZE
+SELECT t1.model_name, t1.mpg, t1.cyl, t2.* FROM mtcars_table t1
+INNER JOIN (SELECT * FROM mtcars_table LIMIT 5) t2 ON t1.model_name = t2.model_name;
+```
+
+```{r}
+# Disconnect from the database and shut it down.
+dbDisconnect(con, shutdown = TRUE)
+```
+
+# Display Beautiful Table
+
+This section shows how to create nicely formatted tables for presentation.
+
+::: panel-tabset
+
+## R
+
+```{r}
+# Use the gt library to create a formatted table.
+library(gt)
+mtcars |> gt()
+```
+
+## Python pandas
+
+```{python}
+# Use the great_tables library to create a formatted table.
+from great_tables import GT
+GT(mtcars_pd)
+```
+
+## Python Polars
+
+```{python}
+# Use the great_tables library to create a formatted table.
+from great_tables import GT
+GT(mtcars_pl)
+```
+
+
+
+
+:::
+
+# Reference:
+
+- [DuckDB R Client Documentation](https://duckdb.org/docs/stable/clients/r.html)
+- [DuckDB SQL Statements](https://duckdb.org/docs/stable/sql/statements)
