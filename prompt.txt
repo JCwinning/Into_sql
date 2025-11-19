@@ -1,1 +1,0 @@
-code.qmd is data manipulation handbook for SQL/R/Python.Please help to translate to Chinese

@@ -5,7 +5,7 @@ project:
 website:
   comments:
     giscus:
-      repo: JCfly3000/into_sql
+      repo: JCwinning/into_sql
       input-position: "bottom"
       theme:
         light: light # giscus theme used for light website theme
