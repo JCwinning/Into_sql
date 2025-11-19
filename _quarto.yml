@@ -5,7 +5,7 @@ project:
 website:
   comments:
     giscus:
-      repo: JCwinning/into_sql
+      repo: jcwinning/into_sql
       input-position: "bottom"
       theme:
         light: light # giscus theme used for light website theme
