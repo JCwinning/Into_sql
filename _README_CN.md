@@ -4,6 +4,11 @@
 
 一个全面的 Quarto 网站，提供 SQL、R 和 Python 常见数据操作任务的并行教程。这个资源帮助您理解这三种流行的数据分析工具之间的等效操作。
 
+手册:[https://jcwinning.github.io/Into_sql/cn/](https://jcwinning.github.io/Into_sql/cn/)
+
+
+
+
 ## 特性
 
 - **语言对比**：并排示例展示如何实现相同的数据操作任务
