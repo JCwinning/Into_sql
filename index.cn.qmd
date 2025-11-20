@@ -1120,11 +1120,6 @@ SELECT t1.model_name, t1.mpg, t1.cyl, t2.* FROM mtcars_table t1
 INNER JOIN (SELECT * FROM mtcars_table LIMIT 5) t2 ON t1.model_name = t2.model_name;
 ```
 
-```{r}
-# 断开与数据库的连接并关闭它。
-dbDisconnect(con, shutdown = TRUE)
-```
-
 # 显示精美的表格
 
 本节介绍如何创建格式精美的表格以供演示。
@@ -1159,6 +1154,62 @@ GT(mtcars_pl)
 
 
 :::
+
+# 窗口函数
+
+本节演示如何使用窗口函数对一组与当前行相关的表行执行计算。
+
+## 排名
+
+在分区内对行进行排名。这里我们在每个 `cyl` 组内按 `mpg`（降序）对汽车进行排名。
+
+::: panel-tabset
+
+### SQL
+
+```{sql}
+#| connection: con
+SELECT model_name, cyl, mpg, 
+       rank() OVER (PARTITION BY cyl ORDER BY mpg DESC) as rank 
+FROM mtcars_table 
+ORDER BY cyl, rank
+LIMIT 10;
+```
+
+### R
+
+```{r}
+mtcars |> 
+  select(model_name, cyl, mpg) |> 
+  group_by(cyl) |> 
+  mutate(rank = min_rank(desc(mpg))) |> 
+  arrange(cyl, rank) |> 
+  head(10)
+```
+
+### Python pandas
+
+```{python}
+# 组内排名
+mtcars_pd[['model_name', 'cyl', 'mpg']].assign(
+    rank=mtcars_pd.groupby('cyl')['mpg'].rank(method='min', ascending=False)
+).sort_values(['cyl', 'rank']).head(10)
+```
+
+### Python Polars
+
+```{python}
+mtcars_pl.select("model_name", "cyl", "mpg").with_columns(
+    pl.col("mpg").rank(method="min", descending=True).over("cyl").alias("rank")
+).sort("cyl", "rank").head(10)
+```
+
+:::
+
+```{r}
+# 断开与数据库的连接并关闭它。
+dbDisconnect(con, shutdown = TRUE)
+```
 
 # 参考资料:
 

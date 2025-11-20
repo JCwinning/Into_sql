@@ -987,6 +987,16 @@ INSERT INTO cities VALUES
 SELECT * FROM cities;
 ```
 
+```{r}
+#| echo: false
+cities <- data.frame(
+  country = c('NL', 'NL', 'NL', 'US', 'US', 'US', 'US', 'US', 'US'),
+  name = c('Amsterdam', 'Amsterdam', 'Amsterdam', 'Seattle', 'Seattle', 'Seattle', 'New York City', 'New York City', 'New York City'),
+  year = c(2000, 2010, 2020, 2000, 2010, 2020, 2000, 2010, 2020),
+  population = c(1005, 1065, 1158, 564, 608, 738, 8015, 8175, 8772)
+)
+```
+
 ## PIVOT on One Column
 
 ::: panel-tabset
@@ -1000,6 +1010,15 @@ PIVOT cities
 ON year
 USING sum(population)
 GROUP BY country;
+```
+
+### R
+
+```{r}
+# Pivot on year, summing population, grouped by country.
+cities |> 
+  select(country, year, population) |> 
+  pivot_wider(names_from = year, values_from = population, values_fn = sum)
 ```
 
 ### Python pandas
@@ -1028,6 +1047,14 @@ cities_pl.pivot(index='country', columns='year', values='population', aggregate_
 PIVOT cities
 ON country, name
 USING sum(population);
+```
+
+### R
+
+```{r}
+# Pivot on year, summing population, keeping all other columns (country, name).
+cities |> 
+  pivot_wider(names_from = year, values_from = population, values_fn = sum)
 ```
 
 ### Python pandas
@@ -1066,6 +1093,18 @@ ON COLUMNS(* EXCLUDE (country))
 INTO
     NAME year
     VALUE population;
+```
+
+### R
+
+```{r}
+# Pivot and then unpivot.
+cities_pivot <- cities |> 
+  select(country, year, population) |> 
+  pivot_wider(names_from = year, values_from = population, values_fn = sum)
+
+cities_pivot |> 
+  pivot_longer(cols = -country, names_to = "year", values_to = "population")
 ```
 
 ### Python pandas
@@ -1109,10 +1148,7 @@ SELECT t1.model_name, t1.mpg, t1.cyl, t2.* FROM mtcars_table t1
 INNER JOIN (SELECT * FROM mtcars_table LIMIT 5) t2 ON t1.model_name = t2.model_name;
 ```
 
-```{r}
-# Disconnect from the database and shut it down.
-dbDisconnect(con, shutdown = TRUE)
-```
+
 
 # Display Beautiful Table
 
@@ -1148,6 +1184,62 @@ GT(mtcars_pl)
 
 
 :::
+
+# Window Functions
+
+This section demonstrates how to use window functions to perform calculations across a set of table rows that are somehow related to the current row.
+
+## Rank
+
+Rank rows within partitions. Here we rank cars by `mpg` (descending) within each `cyl` group.
+
+::: panel-tabset
+
+### SQL
+
+```{sql}
+#| connection: con
+SELECT model_name, cyl, mpg, 
+       rank() OVER (PARTITION BY cyl ORDER BY mpg DESC) as rank 
+FROM mtcars_table 
+ORDER BY cyl, rank
+LIMIT 10;
+```
+
+### R
+
+```{r}
+mtcars |> 
+  select(model_name, cyl, mpg) |> 
+  group_by(cyl) |> 
+  mutate(rank = min_rank(desc(mpg))) |> 
+  arrange(cyl, rank) |> 
+  head(10)
+```
+
+### Python pandas
+
+```{python}
+# Rank within groups
+mtcars_pd[['model_name', 'cyl', 'mpg']].assign(
+    rank=mtcars_pd.groupby('cyl')['mpg'].rank(method='min', ascending=False)
+).sort_values(['cyl', 'rank']).head(10)
+```
+
+### Python Polars
+
+```{python}
+mtcars_pl.select("model_name", "cyl", "mpg").with_columns(
+    pl.col("mpg").rank(method="min", descending=True).over("cyl").alias("rank")
+).sort("cyl", "rank").head(10)
+```
+
+:::
+
+```{r}
+# Disconnect from the database and shut it down.
+dbDisconnect(con, shutdown = TRUE)
+```
 
 # Reference:
 
